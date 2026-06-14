@@ -88,6 +88,15 @@
     }
     .toggle input { cursor: pointer; }
     #output.hidden { display: none; }
+    .footer {
+      font-size: 12px;
+      padding-top: 4px;
+    }
+    .footer a {
+      color: #6ba2d6;
+      text-decoration: none;
+    }
+    .footer a:hover { text-decoration: underline; }
     @media (max-width: 760px) {
       .app { grid-template-columns: 1fr; }
       .side { order: 2; }
@@ -137,6 +146,9 @@
       </div>
       <div id="status">Loading…</div>
       <div id="output" class="hidden"></div>
+      <div class="footer">
+        <a href="https://github.com/MartinMSPedersen/Breakthrough-Web" target="_blank" rel="noopener">Source on GitHub</a>
+      </div>
     </div>
   </div>
   <script type="module" src="./app.js"></script>
