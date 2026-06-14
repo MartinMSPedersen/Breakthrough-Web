@@ -77,6 +77,15 @@
       word-break: break-word;
     }
     h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+    h1 a#rules-link {
+      font-size: 13px;
+      font-weight: 400;
+      margin-left: 8px;
+      color: #6ba2d6;
+      text-decoration: none;
+      vertical-align: middle;
+    }
+    h1 a#rules-link:hover { text-decoration: underline; }
     @media (max-width: 760px) {
       .app { grid-template-columns: 1fr; }
       .side { order: 2; }
@@ -89,7 +98,7 @@
       <canvas id="board" width="560" height="560"></canvas>
     </div>
     <div class="side">
-      <h1>Breakthrough</h1>
+      <h1>Breakthrough <a id="rules-link" href="https://en.wikipedia.org/wiki/Breakthrough_(board_game)" target="_blank" rel="noopener">Rules</a></h1>
       <div class="controls">
         <div>
           <label for="mode">Mode</label>
