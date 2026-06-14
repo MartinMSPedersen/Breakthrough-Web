@@ -1,0 +1,18 @@
+{
+  "name": "breakthrough-ts",
+  "version": "0.1.0",
+  "description": "Breakthrough board game engine + UI, TypeScript port",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "perft": "esbuild src/perft.ts --bundle --platform=node --format=esm --outfile=dist/perft.bundle.js && node dist/perft.bundle.js",
+    "search-test": "esbuild src/search-test.ts --bundle --platform=node --format=esm --outfile=dist/search-test.js && node dist/search-test.js",
+    "build:web": "node build-web.mjs",
+    "dev": "node build-web.mjs --serve"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "esbuild": "^0.28.1"
+  }
+}
