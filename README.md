@@ -4,8 +4,7 @@ A browser version of the abstract strategy game **Breakthrough**, with a
 built-in AI opponent. Pure TypeScript, no install needed — just open the page
 and play.
 
-**▶ Play: https://USERNAME.github.io/REPO/**
-<!-- Replace USERNAME/REPO above once you've pushed and enabled Pages. -->
+**▶ Play: https://MartinMSPedersen.github.io/Breakthrough-Web/**
 
 ## The game
 
