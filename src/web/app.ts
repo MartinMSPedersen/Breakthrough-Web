@@ -5,6 +5,9 @@ import * as Move from '../engine/move';
 import { bitSq } from '../engine/bits';
 import { BoardView } from './board-view';
 import { ALL as THEMES, Theme, CLASSIC } from './themes';
+import {
+  writeGame, parseGame, replayGame, defaultFilename, downloadText, pickTextFile,
+} from './gamefile';
 
 /**
  * Main application. Manages game state and the engine worker, wires up the
@@ -15,10 +18,8 @@ import { ALL as THEMES, Theme, CLASSIC } from './themes';
  *   mp2   - human White, engine Black (default)
  *   two   - engine vs engine
  *   human - human vs human (no engine)
- *   analyse - engine continuously analyses the current position; human may
- *             move for either side to explore
  */
-type Mode = 'mp1' | 'mp2' | 'two' | 'human' | 'analyse';
+type Mode = 'mp1' | 'mp2' | 'two' | 'human';
 
 const SIZE_PX = 560;
 
@@ -70,8 +71,7 @@ class App {
       this.mode = modeSel.value as Mode;
       this.note(`Mode: ${this.modeLabel(this.mode)}`);
       this.cancelSearch();
-      if (this.mode === 'analyse') this.startAnalyse();
-      else this.maybeEngineMove();
+      this.maybeEngineMove();
       this.refresh();
     });
 
@@ -80,7 +80,6 @@ class App {
     depthSel.addEventListener('change', () => {
       this.depth = parseInt(depthSel.value, 10);
       this.note(`Depth: ${this.depth}`);
-      if (this.mode === 'analyse') { this.cancelSearch(); this.startAnalyse(); }
     });
 
     const themeSel = document.getElementById('theme') as HTMLSelectElement;
@@ -99,10 +98,20 @@ class App {
       this.view.setFlipped(!this.view.isFlipped());
     });
     (document.getElementById('undo') as HTMLButtonElement).addEventListener('click', () => this.undo());
+    (document.getElementById('save') as HTMLButtonElement).addEventListener('click', () => this.saveGame());
+    (document.getElementById('load') as HTMLButtonElement).addEventListener('click', () => this.loadGame());
+    (document.getElementById('rules') as HTMLButtonElement).addEventListener('click', () => {
+      window.open('https://en.wikipedia.org/wiki/Breakthrough_(board_game)', '_blank', 'noopener');
+    });
+    const showOutput = document.getElementById('showoutput') as HTMLInputElement;
+    showOutput.checked = false;
+    showOutput.addEventListener('change', () => {
+      this.outputEl.classList.toggle('hidden', !showOutput.checked);
+    });
   }
 
   private modeLabel(m: Mode): string {
-    return { mp1: 'Machine plays White', mp2: 'Machine plays Black', two: 'Two Machines', human: 'Human vs Human', analyse: 'Analyse' }[m];
+    return { mp1: 'Machine plays White', mp2: 'Machine plays Black', two: 'Two Machines', human: 'Human vs Human' }[m];
   }
 
   private applyTheme(t: Theme): void {
@@ -124,8 +133,55 @@ class App {
     this.view.clearLastMove();
     this.note('New game');
     this.refresh();
-    if (this.mode === 'analyse') this.startAnalyse();
-    else this.maybeEngineMove();
+    this.maybeEngineMove();
+  }
+
+  private saveGame(): void {
+    const moves = this.history.map((h) => h.move);
+    const w = this.board.winner();
+    const moveNum = Math.ceil(this.history.length / 2);
+    const resultLine =
+      w === WHITE ? `White wins on move ${moveNum}`
+      : w === BLACK ? `Black wins on move ${moveNum}`
+      : 'in progress';
+    const text = writeGame(moves, resultLine, this.board.toFen());
+    const name = defaultFilename();
+    downloadText(name, text);
+    this.note(`Saved ${moves.length} plies to ${name}`);
+  }
+
+  private async loadGame(): Promise<void> {
+    const picked = await pickTextFile('.game,.fen,.txt');
+    if (!picked) return;
+    let moves: number[];
+    try {
+      moves = parseGame(picked.text);
+    } catch (err) {
+      this.note(`Could not parse ${picked.name}: ${(err as Error).message}`);
+      return;
+    }
+    if (moves.length === 0) {
+      this.note(`No moves found in ${picked.name}`);
+      return;
+    }
+    this.cancelSearch();
+    const { board, applied } = replayGame(moves);
+    this.board = board;
+    this.history = applied.slice();
+    this.selectedSq = -1;
+    this.gameOver = this.board.winner() !== EMPTY;
+    if (applied.length > 0) {
+      const last = applied[applied.length - 1].move;
+      this.view.setLastMove(Move.fromSq(last), Move.toSq(last));
+    } else {
+      this.view.clearLastMove();
+    }
+    this.note(
+      `Loaded ${picked.name}: ${applied.length} plies` +
+        (applied.length < moves.length ? ` (stopped early — illegal move at ply ${applied.length + 1})` : '')
+    );
+    this.refresh();
+    this.maybeEngineMove();
   }
 
   private undo(): void {
@@ -145,19 +201,17 @@ class App {
     else this.view.clearLastMove();
     this.note('Undo');
     this.refresh();
-    if (this.mode === 'analyse') this.startAnalyse();
   }
 
   private sideToMoveIsEngine(): boolean {
     if (this.mode === 'two') return true;
-    if (this.mode === 'human' || this.mode === 'analyse') return false;
+    if (this.mode === 'human') return false;
     const engineSide = this.mode === 'mp1' ? WHITE : BLACK;
     return this.board.side === engineSide;
   }
 
   private onSquare(row: number, col: number): void {
     if (this.gameOver) return;
-    if (this.mode === 'analyse') { this.onSquareAnalyse(row, col); return; }
     if (this.thinking) return;
     if (this.sideToMoveIsEngine()) return;
     this.handleHumanClick(row, col);
@@ -188,29 +242,6 @@ class App {
       this.maybeEngineMove();
     } else if (piece === this.board.side) {
       // Reselect another own piece.
-      this.selectSquare(clickedSq);
-    } else {
-      this.selectedSq = -1;
-      this.refresh();
-    }
-  }
-
-  private onSquareAnalyse(row: number, col: number): void {
-    // In analyse mode the human can move for either side to explore.
-    const clickedSq = row * 8 + col;
-    const piece = this.board.get(row, col);
-    if (this.selectedSq < 0) {
-      if (piece === this.board.side) this.selectSquare(clickedSq);
-      return;
-    }
-    if (clickedSq === this.selectedSq) { this.selectedSq = -1; this.refresh(); return; }
-    const packed = Move.pack(this.selectedSq, clickedSq);
-    if (this.isLegal(packed)) {
-      this.selectedSq = -1;
-      this.cancelSearch();
-      this.playMove(packed);
-      if (!this.gameOver) this.startAnalyse();
-    } else if (piece === this.board.side) {
       this.selectSquare(clickedSq);
     } else {
       this.selectedSq = -1;
@@ -259,7 +290,7 @@ class App {
 
   private maybeEngineMove(): void {
     if (this.gameOver || this.thinking) return;
-    if (this.mode === 'analyse' || this.mode === 'human') return;
+    if (this.mode === 'human') return;
     if (!this.sideToMoveIsEngine()) return;
     this.thinking = true;
     this.searchId++;
@@ -273,21 +304,8 @@ class App {
     });
   }
 
-  private startAnalyse(): void {
-    if (this.gameOver) return;
-    this.searchId++;
-    this.setStatus('Analysing…');
-    this.worker.postMessage({
-      type: 'search',
-      id: this.searchId,
-      fen: this.board.toFen(),
-      depth: 99,
-      ttBits: this.ttBits,
-    });
-  }
-
   private cancelSearch(): void {
-    if (this.thinking || this.mode === 'analyse') {
+    if (this.thinking) {
       this.worker.postMessage({ type: 'cancel' });
     }
     this.thinking = false;
@@ -298,11 +316,10 @@ class App {
 
     if (msg.type === 'iteration') {
       const scoreStr = (msg.score >= 0 ? '+' : '') + msg.score;
-      const label = this.mode === 'analyse' ? '(analyse)' : '(engine)';
-      this.note(`${label} depth=${msg.depth} pv=${msg.pv.join(' ') || msg.bestMove} score=${scoreStr} nodes=${msg.nodes} ${msg.ms}ms`);
+      this.note(`(engine) depth=${msg.depth} pv=${msg.pv.join(' ') || msg.bestMove} score=${scoreStr} nodes=${msg.nodes} ${msg.ms}ms`);
     } else if (msg.type === 'done') {
       this.thinking = false;
-      if (this.mode === 'analyse' || this.mode === 'human') { this.refresh(); return; }
+      if (this.mode === 'human') { this.refresh(); return; }
       if (msg.bestMove) {
         const packed = Move.parse(msg.bestMove);
         this.playMove(packed);
@@ -323,8 +340,7 @@ class App {
     this.view.setBoard(this.board);
     if (this.selectedSq < 0) this.view.clearSelection();
     if (!this.gameOver && !this.thinking) {
-      if (this.mode === 'analyse') this.setStatus('Analysing — move for either side to explore');
-      else if (this.mode === 'human') this.setStatus(`${this.board.side === WHITE ? 'White' : 'Black'} to move`);
+      if (this.mode === 'human') this.setStatus(`${this.board.side === WHITE ? 'White' : 'Black'} to move`);
       else if (!this.sideToMoveIsEngine()) this.setStatus(`Your move (${this.board.side === WHITE ? 'White' : 'Black'})`);
     }
   }

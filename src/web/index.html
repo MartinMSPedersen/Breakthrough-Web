@@ -77,15 +77,17 @@
       word-break: break-word;
     }
     h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
-    h1 a#rules-link {
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font-size: 13px;
-      font-weight: 400;
-      margin-left: 8px;
-      color: #6ba2d6;
-      text-decoration: none;
-      vertical-align: middle;
+      color: #9aa4b2;
+      cursor: pointer;
+      padding: 4px 0;
     }
-    h1 a#rules-link:hover { text-decoration: underline; }
+    .toggle input { cursor: pointer; }
+    #output.hidden { display: none; }
     @media (max-width: 760px) {
       .app { grid-template-columns: 1fr; }
       .side { order: 2; }
@@ -98,7 +100,7 @@
       <canvas id="board" width="560" height="560"></canvas>
     </div>
     <div class="side">
-      <h1>Breakthrough <a id="rules-link" href="https://en.wikipedia.org/wiki/Breakthrough_(board_game)" target="_blank" rel="noopener">Rules</a></h1>
+      <h1>Breakthrough</h1>
       <div class="controls">
         <div>
           <label for="mode">Mode</label>
@@ -107,7 +109,6 @@
             <option value="mp2">Machine plays Black</option>
             <option value="two">Two Machines</option>
             <option value="human">Human vs Human</option>
-            <option value="analyse">Analyse</option>
           </select>
         </div>
         <div>
@@ -127,9 +128,15 @@
         </div>
         <button id="newgame" class="full">New game</button>
         <button id="undo" class="full">Undo</button>
+        <button id="save" class="full">Save game</button>
+        <button id="load" class="full">Load game</button>
+        <button id="rules" class="full">Rules (Wikipedia)</button>
+        <label class="full toggle">
+          <input type="checkbox" id="showoutput" /> Show engine output
+        </label>
       </div>
       <div id="status">Loading…</div>
-      <div id="output"></div>
+      <div id="output" class="hidden"></div>
     </div>
   </div>
   <script type="module" src="./app.js"></script>
