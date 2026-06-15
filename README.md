@@ -19,8 +19,6 @@ Simple rules, surprisingly deep play.
 
 - Play against the engine as White or Black, watch engine-vs-engine, or play
   a friend hot-seat.
-- **Analyse mode** — the engine evaluates the current position continuously
-  and shows its best line.
 - Adjustable search depth, four color themes, board flip, undo.
 - The AI runs in a Web Worker, so the interface never freezes while it thinks.
 
