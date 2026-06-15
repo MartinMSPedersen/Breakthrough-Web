@@ -116,17 +116,3 @@ npm install
 npm run perft        # build + run the correctness harness
 npm run typecheck    # tsc --noEmit
 ```
-
-## Next steps
-
-The engine is done and the base UI is playable. Remaining UI work to reach
-parity with the Java Swing app:
-
-1. **Game save/load** — wire FEN/`.game` import-export to buttons (engine
-   already round-trips FEN; keep the `.game` format byte-identical to Java).
-2. **Analyse navigation** — step back/forward through a loaded game while
-   analysing (the Java GUI's analyse step toolbar).
-3. **Evaluation graph** — a small canvas chart of score over plies.
-4. **Position editor** — click-to-place piece palette.
-5. Optional: wrap in Electron or Tauri for a desktop build (near-zero
-   change to the web code).
