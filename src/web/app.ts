@@ -32,12 +32,26 @@ class App {
   private mode: Mode = 'mp2';
   private depth = 4;
   private ttBits = 22;
+  /** Engine variety: when on, a small per-game random eval noise makes the
+   *  engine choose differently among near-equal moves, so games diverge.
+   *  Amplitude in centipawns; seed is regenerated each New Game. */
+  private variety = true;
+  private noiseAmp = 18;
+  private noiseSeed = App.randomSeed();
 
   private selectedSq = -1;
   private history: { move: number; cap: number }[] = [];
   private thinking = false;
   private searchId = 0;
   private gameOver = false;
+
+  /** A fresh 64-bit-ish random seed as a bigint, for eval noise. */
+  private static randomSeed(): bigint {
+    // Combine two 32-bit randoms into a 53-bit-safe bigint; plenty for a seed.
+    const hi = BigInt(Math.floor(Math.random() * 0x100000000));
+    const lo = BigInt(Math.floor(Math.random() * 0x100000000));
+    return (hi << 32n) ^ lo;
+  }
 
   // DOM
   private statusEl: HTMLElement;
@@ -100,8 +114,11 @@ class App {
     (document.getElementById('undo') as HTMLButtonElement).addEventListener('click', () => this.undo());
     (document.getElementById('save') as HTMLButtonElement).addEventListener('click', () => this.saveGame());
     (document.getElementById('load') as HTMLButtonElement).addEventListener('click', () => this.loadGame());
-    (document.getElementById('rules') as HTMLButtonElement).addEventListener('click', () => {
-      window.open('https://en.wikipedia.org/wiki/Breakthrough_(board_game)', '_blank', 'noopener');
+    const variety = document.getElementById('variety') as HTMLInputElement;
+    variety.checked = this.variety;
+    variety.addEventListener('change', () => {
+      this.variety = variety.checked;
+      this.note(`Engine variety: ${this.variety ? 'on' : 'off'}`);
     });
     const showOutput = document.getElementById('showoutput') as HTMLInputElement;
     showOutput.checked = false;
@@ -130,6 +147,7 @@ class App {
     this.history = [];
     this.selectedSq = -1;
     this.gameOver = false;
+    this.noiseSeed = App.randomSeed();   // fresh variety each game
     this.view.clearLastMove();
     this.note('New game');
     this.refresh();
@@ -301,6 +319,8 @@ class App {
       fen: this.board.toFen(),
       depth: this.depth,
       ttBits: this.ttBits,
+      noiseAmp: this.variety ? this.noiseAmp : 0,
+      noiseSeed: this.noiseSeed.toString(),
     });
   }
 
@@ -309,6 +329,13 @@ class App {
       this.worker.postMessage({ type: 'cancel' });
     }
     this.thinking = false;
+    // Invalidate any in-flight or already-queued worker result: bumping the
+    // id means a `done` message from the search we're abandoning will be
+    // dropped by the staleness guard in onWorkerMessage. Without this, a
+    // search that finished (and queued its `done`) just before we cancelled
+    // would still trigger a move — and in Two Machines mode, chain into the
+    // next search, so New Game appears not to work.
+    this.searchId++;
   }
 
   private onWorkerMessage(msg: any): void {

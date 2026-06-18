@@ -25,6 +25,8 @@ interface SearchMsg {
   ttBits: number;
   weights?: number[];
   defenderScale?: number;
+  noiseAmp?: number;
+  noiseSeed?: string; // bigint serialized as decimal string (postMessage can't clone bigint reliably across all setups)
 }
 interface CancelMsg { type: 'cancel'; }
 type InMsg = SearchMsg | CancelMsg;
@@ -35,10 +37,13 @@ let cachedSearch: Search | null = null;
 let cachedKey = '';
 let cancelRequested = false;
 
-function getSearch(ttBits: number, weights: number[], defenderScale: number): Search {
-  const key = `${ttBits}|${weights.join(',')}|${defenderScale}`;
+function getSearch(
+  ttBits: number, weights: number[], defenderScale: number,
+  noiseAmp: number, noiseSeed: bigint
+): Search {
+  const key = `${ttBits}|${weights.join(',')}|${defenderScale}|${noiseAmp}|${noiseSeed}`;
   if (!cachedSearch || cachedKey !== key) {
-    cachedSearch = new Search(ttBits, new Evaluator(weights, defenderScale));
+    cachedSearch = new Search(ttBits, new Evaluator(weights, defenderScale), noiseAmp, noiseSeed);
     cachedKey = key;
   }
   return cachedSearch;
@@ -55,8 +60,10 @@ self.onmessage = (ev: MessageEvent<InMsg>) => {
     const { id, fen, depth, ttBits } = msg;
     const weights = msg.weights ?? (DEFAULT_WEIGHTS as number[]).slice();
     const defenderScale = msg.defenderScale ?? DEFAULT_DEFENDER_SCALE;
+    const noiseAmp = msg.noiseAmp ?? 0;
+    const noiseSeed = msg.noiseSeed ? BigInt(msg.noiseSeed) : 0n;
     const board = Board.fromFen(fen);
-    const search = getSearch(ttBits, weights, defenderScale);
+    const search = getSearch(ttBits, weights, defenderScale, noiseAmp, noiseSeed);
 
     const result = search.findBest(
       board,

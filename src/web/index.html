@@ -77,6 +77,10 @@
       word-break: break-word;
     }
     h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+    .subtitle { font-size: 16px; margin-bottom: 6px; }
+    .subtitle a { color: #6ba2d6; text-decoration: none; }
+    .subtitle a:hover { text-decoration: underline; }
+    .subtitle .sep { color: #5a6573; margin: 0 6px; }
     .toggle {
       display: flex;
       align-items: center;
@@ -88,15 +92,6 @@
     }
     .toggle input { cursor: pointer; }
     #output.hidden { display: none; }
-    .footer {
-      font-size: 12px;
-      padding-top: 4px;
-    }
-    .footer a {
-      color: #6ba2d6;
-      text-decoration: none;
-    }
-    .footer a:hover { text-decoration: underline; }
     @media (max-width: 760px) {
       .app { grid-template-columns: 1fr; }
       .side { order: 2; }
@@ -110,6 +105,11 @@
     </div>
     <div class="side">
       <h1>Breakthrough</h1>
+      <div class="subtitle">
+        <a href="https://en.wikipedia.org/wiki/Breakthrough_(board_game)" target="_blank" rel="noopener">Rules (Wikipedia)</a>
+        <span class="sep">·</span>
+        <a href="https://github.com/MartinMSPedersen/Breakthrough-Web" target="_blank" rel="noopener">Source on GitHub</a>
+      </div>
       <div class="controls">
         <div>
           <label for="mode">Mode</label>
@@ -139,16 +139,15 @@
         <button id="undo" class="full">Undo</button>
         <button id="save" class="full">Save game</button>
         <button id="load" class="full">Load game</button>
-        <button id="rules" class="full">Rules (Wikipedia)</button>
+        <label class="full toggle">
+          <input type="checkbox" id="variety" checked /> Vary engine play
+        </label>
         <label class="full toggle">
           <input type="checkbox" id="showoutput" /> Show engine output
         </label>
       </div>
       <div id="status">Loading…</div>
       <div id="output" class="hidden"></div>
-      <div class="footer">
-        <a href="https://github.com/MartinMSPedersen/Breakthrough-Web" target="_blank" rel="noopener">Source on GitHub</a>
-      </div>
     </div>
   </div>
   <script type="module" src="./app.js"></script>
